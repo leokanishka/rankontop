@@ -1,5 +1,4 @@
-# backend/main.py
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Response, status
 from pydantic import BaseModel, HttpUrl, EmailStr
 from typing import Optional
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,7 +12,6 @@ from database import init_pool, close_pool, init_db, add_user, get_user_by_email
 
 app = FastAPI()
 
-# --- App Lifecycle Events for Database Pool ---
 @app.on_event("startup")
 def on_startup():
     init_pool()
@@ -50,6 +48,13 @@ app.add_middleware(
 )
 
 # --- API Endpoints ---
+@app.get("/", status_code=status.HTTP_200_OK)
+def health_check():
+    """
+    A simple endpoint that Render can use to confirm the service is live.
+    """
+    return {"status": "ok"}
+
 @app.post("/register/")
 def register_user(user: UserCreate):
     hashed_password = bcrypt.hashpw(user.password.encode('utf-8'), bcrypt.gensalt())
@@ -76,13 +81,12 @@ def analyze_url(request: AnalysisRequest, current_user: User = Depends(get_curre
         raise HTTPException(status_code=403, detail="Free analysis limit reached. Please upgrade.")
 
     final_response = {"status": "complete"}
-    overall_score = 0
     
+    analysis_performed = False
     if request.url:
         seo_results = run_seo_analysis(str(request.url))
         final_response["seo_analysis"] = seo_results
         
-        # Calculate On-Page SEO Score
         on_page_checks = seo_results.get("on_page_elements", {})
         if on_page_checks and not on_page_checks.get("error"):
             passed_checks = sum(1 for check in on_page_checks.values() if check)
@@ -93,30 +97,32 @@ def analyze_url(request: AnalysisRequest, current_user: User = Depends(get_curre
 
         pagespeed_score = seo_results.get("pagespeed", {}).get("performance_score", 0)
 
-        # Calculate AEO/GEO Score
         aeo_geo_score = 0
         if request.keyword:
             keyword_results = get_keyword_insights(request.keyword, str(request.url))
             final_response["aieo_analysis"] = keyword_results
             if keyword_results.get("success"):
-                # Simple score: 50 points for being in top 10, plus points for low difficulty
                 aeo_geo_score += 50 if keyword_results.get("domain_in_top_10") else 0
                 difficulty = keyword_results.get("estimated_difficulty", "")
                 if difficulty == "Low": aeo_geo_score += 50
                 elif difficulty == "Medium": aeo_geo_score += 25
         
-        # Calculate Overall Score
         overall_score = (pagespeed_score * 0.5) + (on_page_score * 0.3) + (aeo_geo_score * 0.2)
         final_response["overall_score"] = int(overall_score)
         
-        # Save to history
         save_analysis_result(db_user['id'], str(request.url), final_response)
+        analysis_performed = True
     
     if request.app_id:
         aso_results = get_app_store_insights(request.app_id)
         final_response["aso_analysis"] = aso_results
-        # You could create a separate overall score for ASO here
         save_analysis_result(db_user['id'], request.app_id, final_response)
+        analysis_performed = True
     
-    increment_analysis_count(current_user.email)
+    if analysis_performed:
+        increment_analysis_count(current_user.email)
+
+    if not request.url and not request.app_id:
+        return {"status": "error", "message": "Please provide a URL or an App ID."}
+
     return final_response
