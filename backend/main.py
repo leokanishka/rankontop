@@ -31,28 +31,20 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
 
-class UserLogin(UserCreate):
-    pass
-    
+class UserLogin(UserCreate): pass
 class Token(BaseModel):
     access_token: str
     token_type: str
 
 origins = ["*"]
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    CORSMiddleware, allow_origins=origins, allow_credentials=True,
+    allow_methods=["*"], allow_headers=["*"],
 )
 
 # --- API Endpoints ---
 @app.get("/", status_code=status.HTTP_200_OK)
 def health_check():
-    """
-    A simple endpoint that Render can use to confirm the service is live.
-    """
     return {"status": "ok"}
 
 @app.post("/register/")
@@ -77,52 +69,30 @@ def analyze_url(request: AnalysisRequest, current_user: User = Depends(get_curre
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found.")
 
-    if db_user['subscription_tier'] == 'free' and db_user['analysis_count'] >= 10:
+    if db_user.get('subscription_tier') == 'free' and db_user.get('analysis_count', 0) >= 10:
         raise HTTPException(status_code=403, detail="Free analysis limit reached. Please upgrade.")
 
     final_response = {"status": "complete"}
-    
     analysis_performed = False
+    
+    target = None
     if request.url:
-        seo_results = run_seo_analysis(str(request.url))
-        final_response["seo_analysis"] = seo_results
-        
-        on_page_checks = seo_results.get("on_page_elements", {})
-        if on_page_checks and not on_page_checks.get("error"):
-            passed_checks = sum(1 for check in on_page_checks.values() if check)
-            total_checks = len(on_page_checks)
-            on_page_score = (passed_checks / total_checks) * 100 if total_checks > 0 else 0
-        else:
-            on_page_score = 0
-
-        pagespeed_score = seo_results.get("pagespeed", {}).get("performance_score", 0)
-
-        aeo_geo_score = 0
+        target = str(request.url)
+        final_response["seo_analysis"] = run_seo_analysis(target)
         if request.keyword:
-            keyword_results = get_keyword_insights(request.keyword, str(request.url))
-            final_response["aieo_analysis"] = keyword_results
-            if keyword_results.get("success"):
-                aeo_geo_score += 50 if keyword_results.get("domain_in_top_10") else 0
-                difficulty = keyword_results.get("estimated_difficulty", "")
-                if difficulty == "Low": aeo_geo_score += 50
-                elif difficulty == "Medium": aeo_geo_score += 25
-        
-        overall_score = (pagespeed_score * 0.5) + (on_page_score * 0.3) + (aeo_geo_score * 0.2)
-        final_response["overall_score"] = int(overall_score)
-        
-        save_analysis_result(db_user['id'], str(request.url), final_response)
+            final_response["aieo_analysis"] = get_keyword_insights(request.keyword, target)
         analysis_performed = True
     
     if request.app_id:
-        aso_results = get_app_store_insights(request.app_id)
-        final_response["aso_analysis"] = aso_results
-        save_analysis_result(db_user['id'], request.app_id, final_response)
+        target = request.app_id
+        final_response["aso_analysis"] = get_app_store_insights(target)
         analysis_performed = True
     
-    if analysis_performed:
+    if analysis_performed and db_user:
+        save_analysis_result(db_user['id'], target, final_response)
         increment_analysis_count(current_user.email)
 
     if not request.url and not request.app_id:
-        return {"status": "error", "message": "Please provide a URL or an App ID."}
+        raise HTTPException(status_code=422, detail="Please provide a URL or an App ID.")
 
     return final_response
