@@ -79,7 +79,6 @@
     </div>
 
     <script>
-        // --- ELEMENT SELECTORS ---
         const urlInput = document.getElementById('url-input'), keywordInput = document.getElementById('keyword-input'), appIdInput = document.getElementById('app-id-input');
         const analyzeButton = document.getElementById('analyze-button'), resultsContainer = document.getElementById('results-container'), resultsOutput = document.getElementById('results-output');
         const loginBtn = document.getElementById('login-btn'), signupBtn = document.getElementById('signup-btn'), authModal = document.getElementById('auth-modal');
@@ -89,7 +88,8 @@
         const userEmailSpan = document.getElementById('user-email'), logoutBtn = document.getElementById('logout-btn'), overallScoreDisplay = document.getElementById('overall-score-display');
         let isLoginMode = true;
 
-        // --- AUTH LOGIC ---
+        const API_BASE_URL = 'https://rankontop-backend.onrender.com';
+
         function updateUIForLoginState() {
             const token = localStorage.getItem('accessToken'), email = localStorage.getItem('userEmail');
             if (token && email) {
@@ -118,10 +118,9 @@
         authForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = emailInput.value, password = passwordInput.value, endpoint = isLoginMode ? 'login' : 'register';
-            const apiBaseUrl = 'https://rankontop-backend.onrender.com'; // Your live Render URL
             modalError.textContent = '';
             try {
-                const response = await fetch(`${apiBaseUrl}/${endpoint}/`, {
+                const response = await fetch(`${API_BASE_URL}/${endpoint}/`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password }),
                 });
@@ -136,7 +135,6 @@
             } catch (error) { modalError.textContent = error.message; }
         });
         
-        // --- ANALYSIS LOGIC ---
         urlInput.addEventListener('input', () => { appIdInput.disabled = !!urlInput.value.trim(); });
         appIdInput.addEventListener('input', () => {
             const disabled = !!appIdInput.value.trim();
@@ -145,7 +143,6 @@
         
         analyzeButton.addEventListener('click', async () => {
             const url = urlInput.value, keyword = keywordInput.value, appId = appIdInput.value, token = localStorage.getItem('accessToken');
-            const apiBaseUrl = 'https://rankontop-backend.onrender.com'; // Your live Render URL
             if (!url && !appId) { alert('Please enter a URL or an App ID.'); return; }
             if (!token) { alert('Please log in to perform an analysis.'); openModal(true); return; }
 
@@ -158,7 +155,7 @@
                 if (keyword && !keywordInput.disabled) requestBody.keyword = keyword;
                 if (appId && !appIdInput.disabled) requestBody.app_id = appId;
                 
-                const response = await fetch(`${apiBaseUrl}/analyze/`, {
+                const response = await fetch(`${API_BASE_URL}/analyze/`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify(requestBody),
@@ -174,7 +171,6 @@
             }
         });
         
-        // --- DISPLAY LOGIC ---
         function displayResults(data) {
             resultsOutput.innerHTML = ''; overallScoreDisplay.innerHTML = ''; overallScoreDisplay.classList.add('hidden');
             const { overall_score, seo_analysis, aieo_analysis, aso_analysis } = data;
