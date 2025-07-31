@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RankOnTop - Get Your Visibility Score</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        :root {
+            --bg-color: #0A0A0A; --container-bg: #111111; --border-color: #262626;
+            --text-primary: #F5F5F5; --text-secondary: #A3A3A3; --accent-color: #00F5A0;
+            --success-color: #00F5A0; --error-color: #F87171;
+        }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg-color); color: var(--text-primary); }
+        .main-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 1rem; }
+        .content-box { background-color: var(--container-bg); border: 1px solid var(--border-color); border-radius: 1.25rem; padding: 3rem; width: 100%; max-width: 550px; text-align: center; }
+        .input-field { background-color: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-primary); transition: all 0.2s ease-in-out; }
+        .input-field:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(0, 245, 160, 0.2); }
+        .input-field:disabled { background-color: #1a1a1a; color: #555; cursor: not-allowed; }
+        .cta-button { background-color: var(--accent-color); color: #000000; transition: all 0.2s ease-in-out; }
+        .cta-button:hover { background-color: #00DDAA; transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0, 245, 160, 0.15); }
+        .cta-button:disabled { background-color: #333; cursor: not-allowed; color: #777; }
+        .results-container { margin-top: 2rem; text-align: left; }
+        .score-card { background-color: #0A0A0A; border: 1px solid var(--border-color); border-radius: 0.75rem; padding: 1rem; display: flex; justify-content: space-between; align-items: center; }
+        .score-value { font-size: 2rem; font-weight: 700; }
+        .check-value { font-size: 1.5rem; }
+        .modal-overlay { background-color: rgba(0, 0, 0, 0.8); backdrop-filter: blur(5px); }
+        .overall-score-circle {
+            width: 150px; height: 150px; border-radius: 50%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            margin: 1rem auto; border: 8px solid var(--accent-color);
+        }
+        .overall-score-number { font-size: 3rem; font-weight: 900; line-height: 1; color: var(--accent-color); }
+        .overall-score-label { font-size: 0.9rem; color: var(--text-secondary); }
+    </style>
+</head>
+<body>
+    <div class="absolute top-0 right-0 p-6 space-x-4">
+        <div id="user-info" class="hidden items-center space-x-4">
+            <span id="user-email" class="text-text-secondary"></span>
+            <button id="logout-btn" class="text-text-secondary hover:text-white transition">Logout</button>
+        </div>
+        <div id="guest-info">
+            <button id="login-btn" class="text-text-secondary hover:text-white transition">Login</button>
+            <button id="signup-btn" class="bg-accent-color text-black font-semibold px-4 py-2 rounded-lg hover:bg-opacity-90 transition">Sign Up</button>
+        </div>
+    </div>
+    <div class="main-container">
+        <div class="content-box">
+            <h1 class="text-4xl md:text-5xl font-bold mb-3">Get Your Visibility Score</h1>
+            <p class="text-lg text-text-secondary mb-10">Analyze your SEO, AEO/GEO, and ASO performance.</p>
+            <div class="space-y-4">
+                <input type="text" id="url-input" placeholder="Enter a URL..." class="w-full p-4 rounded-lg text-lg input-field">
+                <input type="text" id="keyword-input" placeholder="Enter a target keyword (for URL)" class="w-full p-4 rounded-lg text-lg input-field">
+                <input type="text" id="app-id-input" placeholder="...or enter an App ID" class="w-full p-4 rounded-lg text-lg input-field">
+                <button id="analyze-button" class="w-full p-4 rounded-lg font-semibold text-lg cta-button">Start Analysis</button>
+            </div>
+            <div id="results-container" class="hidden">
+                <h2 class="text-2xl font-bold my-4">Analysis Results</h2>
+                <div id="overall-score-display" class="hidden"></div>
+                <div id="results-output" class="space-y-3 mt-4"></div>
+            </div>
+        </div>
+    </div>
+    <div id="auth-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay">
+        <div class="bg-container-bg border border-border-color rounded-lg p-8 w-full max-w-sm">
+            <h2 id="modal-title" class="text-2xl font-bold text-center mb-6">Login</h2>
+            <div id="modal-error" class="text-red-400 text-center mb-4 min-h-[1.25rem]"></div>
+            <form id="auth-form" class="space-y-4">
+                <input type="email" id="email-input" placeholder="Email" required class="w-full p-3 rounded-lg input-field">
+                <input type="password" id="password-input" placeholder="Password" required class="w-full p-3 rounded-lg input-field">
+                <button type="submit" id="modal-submit-btn" class="w-full p-3 rounded-lg font-semibold cta-button">Continue</button>
+            </form>
+            <button id="close-modal-btn" class="w-full text-center mt-4 text-text-secondary hover:text-white">Cancel</button>
+        </div>
+    </div>
+    <script>
+        const urlInput = document.getElementById('url-input'), keywordInput = document.getElementById('keyword-input'), appIdInput = document.getElementById('app-id-input');
+        const analyzeButton = document.getElementById('analyze-button'), resultsContainer = document.getElementById('results-container'), resultsOutput = document.getElementById('results-output');
+        const loginBtn = document.getElementById('login-btn'), signupBtn = document.getElementById('signup-btn'), authModal = document.getElementById('auth-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn'), authForm = document.getElementById('auth-form'), modalTitle = document.getElementById('modal-title');
+        const modalSubmitBtn = document.getElementById('modal-submit-btn'), emailInput = document.getElementById('email-input'), passwordInput = document.getElementById('password-input');
+        const modalError = document.getElementById('modal-error'), guestInfo = document.getElementById('guest-info'), userInfo = document.getElementById('user-info');
+        const userEmailSpan = document.getElementById('user-email'), logoutBtn = document.getElementById('logout-btn'), overallScoreDisplay = document.getElementById('overall-score-display');
+        let isLoginMode = true;
+
+        function updateUIForLoginState() {
+            const token = localStorage.getItem('accessToken'), email = localStorage.getItem('userEmail');
+            if (token && email) {
+                guestInfo.classList.add('hidden');
+                userInfo.classList.remove('hidden'); userInfo.classList.add('flex');
+                userEmailSpan.textContent = email;
+            } else {
+                guestInfo.classList.remove('hidden');
+                userInfo.classList.add('hidden'); userInfo.classList.remove('flex');
+                userEmailSpan.textContent = '';
+            }
+        }
+        function logout() { localStorage.removeItem('accessToken'); localStorage.removeItem('userEmail'); updateUIForLoginState(); }
+        logoutBtn.addEventListener('click', logout);
+        function openModal(loginMode = true) {
+            isLoginMode = loginMode;
+            modalTitle.textContent = isLoginMode ? 'Login' : 'Sign Up';
+            modalSubmitBtn.textContent = isLoginMode ? 'Login' : 'Create Account';
+            modalError.textContent = ''; authForm.reset(); authModal.classList.remove('hidden');
+        }
+        function closeModal() { authModal.classList.add('hidden'); }
+        loginBtn.addEventListener('click', () => openModal(true));
+        signupBtn.addEventListener('click', () => openModal(false));
+        closeModalBtn.addEventListener('click', closeModal);
+
+        authForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = emailInput.value, password = passwordInput.value, endpoint = isLoginMode ? 'login' : 'register';
+            modalError.textContent = '';
+            try {
+                const response = await fetch(`http://127.0.0.1:8000/${endpoint}/`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password }),
+                });
+                const data = await response.json();
+                if (!response.ok) { throw new Error(data.detail || 'An unknown error occurred.'); }
+                if (isLoginMode) {
+                    localStorage.setItem('accessToken', data.access_token);
+                    localStorage.setItem('userEmail', email);
+                    updateUIForLoginState();
+                } else { alert('Registration successful! Please log in.'); }
+                closeModal();
+            } catch (error) { modalError.textContent = error.message; }
+        });
+        
+        urlInput.addEventListener('input', () => { appIdInput.disabled = !!urlInput.value.trim(); });
+        appIdInput.addEventListener('input', () => {
+            const disabled = !!appIdInput.value.trim();
+            urlInput.disabled = disabled; keywordInput.disabled = disabled;
+        });
+        
+        analyzeButton.addEventListener('click', async () => {
+            const url = urlInput.value, keyword = keywordInput.value, appId = appIdInput.value, token = localStorage.getItem('accessToken');
+            if (!url && !appId) { alert('Please enter a URL or an App ID.'); return; }
+            if (!token) { alert('Please log in to perform an analysis.'); openModal(true); return; }
+
+            analyzeButton.disabled = true; analyzeButton.textContent = 'Analyzing...';
+            resultsContainer.classList.add('hidden'); resultsOutput.innerHTML = '';
+
+            try {
+                const requestBody = {};
+                if (url && !urlInput.disabled) requestBody.url = url;
+                if (keyword && !keywordInput.disabled) requestBody.keyword = keyword;
+                if (appId && !appIdInput.disabled) requestBody.app_id = appId;
+                
+                const response = await fetch('http://127.0.0.1:8000/analyze/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(requestBody),
+                });
+                const data = await response.json();
+                if (!response.ok) { throw new Error(data.detail || `HTTP error! status: ${response.status}`); }
+                displayResults(data);
+            } catch (error) {
+                resultsOutput.innerHTML = `<div class="score-card" style="border-color: var(--error-color);"><p class="text-red-400">An error occurred: ${error.message}</p></div>`;
+                resultsContainer.classList.remove('hidden');
+            } finally {
+                analyzeButton.disabled = false; analyzeButton.textContent = 'Start Analysis';
+            }
+        });
+        
+        // --- THIS IS THE CORRECT, COMPLETE FUNCTION ---
+        function displayResults(data) {
+            resultsOutput.innerHTML = '';
+            overallScoreDisplay.innerHTML = '';
+            overallScoreDisplay.classList.add('hidden');
+            const { overall_score, seo_analysis, aieo_analysis, aso_analysis } = data;
+
+            if (overall_score !== undefined) {
+                const circleColor = overall_score > 75 ? 'var(--success-color)' : overall_score > 40 ? '#FBBF24' : 'var(--error-color)';
+                overallScoreDisplay.innerHTML = `<div class="overall-score-circle" style="border-color: ${circleColor};"><span class="overall-score-number" style="color: ${circleColor};">${overall_score}</span><span class="overall-score-label">Overall Score</span></div>`;
+                overallScoreDisplay.classList.remove('hidden');
+            }
+            if (seo_analysis) {
+                if (seo_analysis.pagespeed && seo_analysis.pagespeed.success) {
+                    resultsOutput.innerHTML += createScoreCard('PageSpeed Score (Mobile)', 'A core metric for user experience and SEO.', seo_analysis.pagespeed.performance_score);
+                }
+                if (seo_analysis.on_page_elements && !seo_analysis.on_page_elements.error) {
+                    const elements = seo_analysis.on_page_elements;
+                    resultsOutput.innerHTML += createInfoCard('Title Tag', elements.title || 'Missing');
+                    resultsOutput.innerHTML += createInfoCard('Meta Description', elements.meta_description || 'Missing');
+                    resultsOutput.innerHTML += createInfoCard('H1 Heading', elements.h1 || 'Missing');
+                }
+            }
+            if (aieo_analysis && aieo_analysis.success) {
+                resultsOutput.innerHTML += createInfoCard('Keyword Difficulty', aieo_analysis.estimated_difficulty, `For keyword: "${aieo_analysis.keyword_analyzed}"`);
+                resultsOutput.innerHTML += createInfoCard('Competing Pages', aieo_analysis.competing_pages, 'Number of pages with keyword in title');
+                resultsOutput.innerHTML += createCheckCard('Domain in Top 10?', `Is your domain in the top 10 results?`, aieo_analysis.domain_in_top_10);
+            }
+            if (aso_analysis && aso_analysis.success) {
+                const { user_rating, review_sentiment_score, app_id } = aso_analysis;
+                if (user_rating !== null && user_rating !== undefined) {
+                    resultsOutput.innerHTML += createScoreCard('App User Rating', `Analysis for ${app_id}`, `${user_rating} / 5`);
+                }
+                if (review_sentiment_score !== null && review_sentiment_score !== undefined) {
+                    resultsOutput.innerHTML += createScoreCard('Review Sentiment Score', 'Score of positive vs. negative reviews.', review_sentiment_score);
+                }
+            }
+            resultsContainer.classList.remove('hidden');
+        }
+        function createScoreCard(title, description, score) { return `<div class="score-card"><div><h3 class="text-lg font-semibold text-text-primary">${title}</h3><p class="text-sm text-text-secondary">${description}</p></div><div class="score-value" style="color: var(--accent-color);">${score}</div></div>`; }
+        function createCheckCard(title, description, found) { const icon = found ? `<span class="check-value" style="color: var(--success-color);">✔</span>` : `<span class="check-value" style="color: var(--error-color);">✖</span>`; return `<div class="score-card"><div><h3 class="text-lg font-semibold text-text-primary">${title}</h3><p class="text-sm text-text-secondary">${description}</p></div>${icon}</div>`; }
+        function createInfoCard(title, value, subtitle = '') { const subtitleHtml = subtitle ? `<p class="text-sm text-text-secondary">${subtitle}</p>` : ''; return `<div class="score-card"><div><h3 class="text-lg font-semibold text-text-primary">${title}</h3>${subtitleHtml}</div><div class="text-lg font-bold text-text-primary">${value}</div></div>`; }
+        document.addEventListener('DOMContentLoaded', updateUIForLoginState);
+    </script>
+</body>
+</html>
