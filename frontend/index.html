@@ -115,7 +115,7 @@
             const email = emailInput.value, password = passwordInput.value, endpoint = isLoginMode ? 'login' : 'register';
             modalError.textContent = '';
             try {
-                const response = await fetch(`http://127.0.0.1:8000/${endpoint}/`, {
+                const response = await fetch(`https://rankontop.onrender.com/${endpoint}/`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password }),
                 });
@@ -150,7 +150,7 @@
                 if (keyword && !keywordInput.disabled) requestBody.keyword = keyword;
                 if (appId && !appIdInput.disabled) requestBody.app_id = appId;
                 
-                const response = await fetch('http://127.0.0.1:8000/analyze/', {
+                const response = await fetch('https://rankontop.onrender.com/analyze/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify(requestBody),
