@@ -84,7 +84,7 @@
         const modalError = document.getElementById('modal-error'), guestInfo = document.getElementById('guest-info'), userInfo = document.getElementById('user-info');
         const userEmailSpan = document.getElementById('user-email'), logoutBtn = document.getElementById('logout-btn'), overallScoreDisplay = document.getElementById('overall-score-display');
         let isLoginMode = true;
-        const API_BASE_URL = 'https://rankontop-backend.onrender.com';
+        const API_BASE_URL = 'https://rankontop.onrender.com';
         function updateUIForLoginState() {
             const token = localStorage.getItem('accessToken'), email = localStorage.getItem('userEmail');
             if (token && email) {
