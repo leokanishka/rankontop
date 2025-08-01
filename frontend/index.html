@@ -33,6 +33,11 @@
         }
         .overall-score-number { font-size: 3rem; font-weight: 900; line-height: 1; color: var(--accent-color); }
         .overall-score-label { font-size: 0.9rem; color: var(--text-secondary); }
+        .auth-button { padding: 0.5rem 1rem; border-radius: 0.5rem; transition: all 0.2s ease-in-out; }
+        .login-button { border: 1px solid var(--accent-color); color: var(--accent-color); }
+        .login-button:hover { background-color: rgba(0, 245, 160, 0.1); }
+        .signup-button { background-color: var(--accent-color); color: #000000; }
+        .signup-button:hover { background-color: #00DDAA; box-shadow: 0 2px 10px rgba(0, 245, 160, 0.2); }
     </style>
 </head>
 <body>
@@ -42,8 +47,8 @@
             <button id="logout-btn" class="text-text-secondary hover:text-white transition">Logout</button>
         </div>
         <div id="guest-info">
-            <button id="login-btn" class="text-text-secondary hover:text-white transition">Login</button>
-            <button id="signup-btn" class="text-text-secondary hover:text-white transition">Sign Up</button>
+            <button id="login-btn" class="auth-button login-button">Login</button>
+            <button id="signup-btn" class="auth-button signup-button">Sign Up</button>
         </div>
     </div>
     <div class="main-container">
